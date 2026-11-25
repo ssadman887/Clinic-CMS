@@ -1,0 +1,36 @@
+{% extends 'clinic/base.html' %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Appointments</h3>
+  <a href="{% url 'appointment_create' %}" class="btn btn-primary"><i class="bi bi-calendar-plus me-1"></i>Book appointment</a>
+</div>
+<form class="card card-body mb-3 row g-2 flex-row" method="get">
+  <div class="col-md-3"><input name="q" value="{{ f.q }}" class="form-control" placeholder="Patient, MRN, reason…"></div>
+  <div class="col-md-2"><input type="date" name="date" value="{{ f.date }}" class="form-control"></div>
+  <div class="col-md-3"><select name="doctor" class="form-select"><option value="">All doctors</option>
+    {% for d in doctors %}<option value="{{ d.pk }}" {% if f.doctor == d.pk|stringformat:'s' %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select name="status" class="form-select"><option value="">Any status</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2 d-grid"><button class="btn btn-outline-primary">Filter</button></div>
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover mb-0">
+    <thead class="table-light"><tr><th>Date &amp; time</th><th>Patient</th><th>Doctor</th><th>Type</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in page %}
+      <tr>
+        <td class="text-nowrap">{{ a.scheduled_at|date:"j M Y, H:i" }}</td>
+        <td><a href="{{ a.patient.get_absolute_url }}">{{ a.patient.full_name }}</a><div class="small text-muted">{{ a.patient.mrn }}</div></td>
+        <td>{{ a.doctor }}<div class="small text-muted">{{ a.doctor.department }}</div></td>
+        <td class="small">{{ a.get_visit_type_display }}</td>
+        <td class="small">{{ a.reason|truncatechars:40 }}</td>
+        <td><span class="badge text-bg-{{ a.status_badge }}">{{ a.get_status_display }}</span></td>
+        <td class="text-end"><a href="{{ a.get_absolute_url }}" class="btn btn-sm btn-light">Open</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No appointments match.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% include 'clinic/_pagination.html' %}
+{% endblock %}

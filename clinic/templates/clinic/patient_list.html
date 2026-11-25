@@ -1,0 +1,38 @@
+{% extends 'clinic/base.html' %}
+{% block title %}Patients{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Patients</h3>
+  <a href="{% url 'patient_create' %}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Register patient</a>
+</div>
+<form class="card card-body mb-3 row g-2 flex-row" method="get">
+  <div class="col-md-6"><input name="q" value="{{ q }}" class="form-control" placeholder="Search name, MRN, phone, email…"></div>
+  <div class="col-md-2"><select name="gender" class="form-select"><option value="">Any gender</option>
+    {% for v, l in genders %}<option value="{{ v }}" {% if request.GET.gender == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select name="blood" class="form-select"><option value="">Any blood group</option>
+    {% for v, l in blood_groups %}<option value="{{ v }}" {% if request.GET.blood == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2 d-grid"><button class="btn btn-outline-primary"><i class="bi bi-search me-1"></i>Search</button></div>
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover mb-0">
+    <thead class="table-light"><tr><th>MRN</th><th>Name</th><th>Age / Sex</th><th>Blood</th><th>Phone</th><th>Registered</th><th></th></tr></thead>
+    <tbody>
+    {% for p in page %}
+      <tr>
+        <td class="font-monospace small">{{ p.mrn }}</td>
+        <td><a href="{{ p.get_absolute_url }}" class="fw-semibold text-decoration-none">{{ p.full_name }}</a></td>
+        <td>{{ p.age }} / {{ p.gender }}</td>
+        <td>{{ p.blood_group|default:"—" }}</td>
+        <td>{{ p.phone }}</td>
+        <td class="small text-muted">{{ p.created_at|date:"j M Y" }}</td>
+        <td class="text-end text-nowrap">
+          <a href="{% url 'appointment_create' %}?patient={{ p.pk }}" class="btn btn-sm btn-outline-primary" title="Book"><i class="bi bi-calendar-plus"></i></a>
+          <a href="{% url 'patient_update' p.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No patients found.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% include 'clinic/_pagination.html' %}
+{% endblock %}

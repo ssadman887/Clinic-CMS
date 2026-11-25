@@ -1,0 +1,92 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}{{ patient.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">{{ patient.full_name }}</h3>
+    <span class="text-muted font-monospace">{{ patient.mrn }}</span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'appointment_create' %}?patient={{ patient.pk }}" class="btn btn-primary"><i class="bi bi-calendar-plus me-1"></i>Book</a>
+    <a href="{% url 'lab_create' %}?patient={{ patient.pk }}" class="btn btn-outline-primary"><i class="bi bi-droplet me-1"></i>Order lab</a>
+    <a href="{% url 'invoice_create' %}?patient={{ patient.pk }}" class="btn btn-outline-primary"><i class="bi bi-receipt me-1"></i>Invoice</a>
+    <a href="{% url 'patient_update' patient.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-body">
+      <dl class="row mb-0 small">
+        <dt class="col-5">Age / Sex</dt><dd class="col-7">{{ patient.age }} yrs / {{ patient.get_gender_display }}</dd>
+        <dt class="col-5">Date of birth</dt><dd class="col-7">{{ patient.date_of_birth|date:"j M Y" }}</dd>
+        <dt class="col-5">Blood group</dt><dd class="col-7">{{ patient.blood_group|default:"—" }}</dd>
+        <dt class="col-5">Phone</dt><dd class="col-7">{{ patient.phone }}</dd>
+        <dt class="col-5">Email</dt><dd class="col-7">{{ patient.email|default:"—" }}</dd>
+        <dt class="col-5">Address</dt><dd class="col-7">{{ patient.address|default:"—"|linebreaksbr }}</dd>
+        <dt class="col-5">Emergency</dt><dd class="col-7">{{ patient.emergency_contact_name|default:"—" }}<br>{{ patient.emergency_contact_phone }}</dd>
+        <dt class="col-5">Insurance</dt><dd class="col-7">{{ patient.insurance_provider|default:"—" }} {{ patient.insurance_number }}</dd>
+      </dl>
+    </div></div>
+    <div class="card mt-3 border-start border-danger border-4"><div class="card-body small">
+      <div class="fw-semibold text-danger mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Allergies</div>
+      <div class="mb-2">{{ patient.allergies|default:"None recorded" }}</div>
+      <div class="fw-semibold mb-1">Chronic conditions</div>
+      <div>{{ patient.chronic_conditions|default:"None recorded" }}</div>
+    </div></div>
+  </div>
+
+  <div class="col-lg-8">
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-visits">Visits ({{ appointments|length }})</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-history">Medical history</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-labs">Lab ({{ lab_orders|length }})</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-bills">Billing ({{ invoices|length }})</button></li>
+    </ul>
+    <div class="tab-content card border-top-0 rounded-top-0">
+      <div class="tab-pane fade show active" id="t-visits"><div class="table-responsive"><table class="table mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Doctor</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+        {% for a in appointments %}
+          <tr><td><a href="{{ a.get_absolute_url }}">{{ a.scheduled_at|date:"j M Y H:i" }}</a></td><td>{{ a.doctor }}</td>
+            <td class="small">{{ a.reason }}</td><td><span class="badge text-bg-{{ a.status_badge }}">{{ a.get_status_display }}</span></td></tr>
+        {% empty %}<tr><td colspan="4" class="text-muted">No visits.</td></tr>{% endfor %}
+      </tbody></table></div></div>
+
+      <div class="tab-pane fade p-3" id="t-history">
+        {% for c in consultations %}
+          <div class="border rounded p-3 mb-3">
+            <div class="d-flex justify-content-between">
+              <strong>{{ c.diagnosis }} {% if c.icd10_code %}<span class="badge text-bg-light">{{ c.icd10_code }}</span>{% endif %}</strong>
+              <span class="small text-muted">{{ c.appointment.scheduled_at|date:"j M Y" }} · {{ c.appointment.doctor }}</span>
+            </div>
+            <div class="small text-muted mb-2">Complaint: {{ c.chief_complaint }}
+              {% if c.blood_pressure %}· BP {{ c.blood_pressure }}{% endif %}{% if c.pulse %} · Pulse {{ c.pulse }}{% endif %}{% if c.temperature %} · Temp {{ c.temperature }}°F{% endif %}</div>
+            {% if c.prescription %}
+              <ul class="small mb-1">{% for i in c.prescription.items.all %}<li>{{ i.medicine.name }} {{ i.medicine.strength }} — {{ i.dosage }}, {{ i.frequency }}, {{ i.duration_days }} days {% if i.instructions %}({{ i.instructions }}){% endif %}</li>{% endfor %}</ul>
+            {% endif %}
+            <a href="{% url 'prescription_print' c.pk %}" class="small" target="_blank"><i class="bi bi-printer"></i> Prescription</a>
+          </div>
+        {% empty %}<p class="text-muted mb-0">No consultations recorded.</p>{% endfor %}
+      </div>
+
+      <div class="tab-pane fade" id="t-labs"><div class="table-responsive"><table class="table mb-0">
+        <thead class="table-light"><tr><th>Ordered</th><th>Test</th><th>Result</th><th>Status</th></tr></thead><tbody>
+        {% for l in lab_orders %}
+          <tr><td class="small">{{ l.ordered_at|date:"j M Y" }}</td><td>{{ l.test.name }}</td>
+            <td class="{% if l.is_abnormal %}text-danger fw-semibold{% endif %}">{{ l.result_value|default:"—" }} {% if l.result_value %}{{ l.test.unit }}{% endif %}</td>
+            <td><span class="badge text-bg-{{ l.status_badge }}">{{ l.get_status_display }}</span></td></tr>
+        {% empty %}<tr><td colspan="4" class="text-muted">No lab orders.</td></tr>{% endfor %}
+      </tbody></table></div></div>
+
+      <div class="tab-pane fade" id="t-bills"><div class="table-responsive"><table class="table mb-0">
+        <thead class="table-light"><tr><th>Invoice</th><th>Date</th><th class="text-end">Total</th><th class="text-end">Balance</th><th>Status</th></tr></thead><tbody>
+        {% for i in invoices %}
+          <tr><td><a href="{{ i.get_absolute_url }}">{{ i.invoice_no }}</a></td><td>{{ i.issued_on|date:"j M Y" }}</td>
+            <td class="text-end">{{ i.total|money }}</td><td class="text-end">{{ i.balance|money }}</td>
+            <td><span class="badge text-bg-{{ i.status_badge }}">{{ i.get_status_display }}</span></td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">No invoices.</td></tr>{% endfor %}
+      </tbody></table></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

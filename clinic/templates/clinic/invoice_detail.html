@@ -1,0 +1,67 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}{{ invoice.invoice_no }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 no-print flex-wrap gap-2">
+  <h3 class="mb-0">Invoice {{ invoice.invoice_no }}</h3>
+  <div class="d-flex gap-2">
+    <button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer me-1"></i>Print</button>
+    <a href="{% url 'invoice_update' invoice.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body p-4">
+      <div class="d-flex justify-content-between mb-4">
+        <div><h4 class="mb-0"><i class="bi bi-hospital text-primary"></i> Clinic Management System</h4>
+          <div class="small text-muted">Tax invoice</div></div>
+        <div class="text-end">
+          <div class="font-monospace fs-5">{{ invoice.invoice_no }}</div>
+          <span class="badge text-bg-{{ invoice.status_badge }}">{{ invoice.get_status_display }}</span>
+        </div>
+      </div>
+      <div class="row small mb-4">
+        <div class="col-6"><div class="text-muted">Billed to</div>
+          <strong>{{ invoice.patient.full_name }}</strong><br>{{ invoice.patient.mrn }}<br>{{ invoice.patient.phone }}<br>{{ invoice.patient.address|linebreaksbr }}</div>
+        <div class="col-6 text-end"><div class="text-muted">Issued</div>{{ invoice.issued_on|date:"j M Y" }}
+          {% if invoice.due_on %}<div class="text-muted mt-1">Due</div>{{ invoice.due_on|date:"j M Y" }}{% endif %}
+          {% if invoice.appointment %}<div class="text-muted mt-1">Visit</div><a href="{{ invoice.appointment.get_absolute_url }}">{{ invoice.appointment.scheduled_at|date:"j M Y" }} · {{ invoice.appointment.doctor }}</a>{% endif %}</div>
+      </div>
+      <table class="table">
+        <thead class="table-light"><tr><th>Description</th><th>Type</th><th class="text-end">Qty</th><th class="text-end">Unit price</th><th class="text-end">Amount</th></tr></thead>
+        <tbody>
+        {% for it in invoice.items.all %}
+          <tr><td>{{ it.description }}</td><td class="small text-muted">{{ it.get_kind_display }}</td><td class="text-end">{{ it.quantity }}</td>
+            <td class="text-end">{{ it.unit_price|money }}</td><td class="text-end">{{ it.line_total|money }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">No items.</td></tr>{% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><td colspan="4" class="text-end">Subtotal</td><td class="text-end">{{ invoice.subtotal|money }}</td></tr>
+          {% if invoice.discount %}<tr><td colspan="4" class="text-end">Discount</td><td class="text-end">− {{ invoice.discount|money }}</td></tr>{% endif %}
+          <tr class="fw-bold"><td colspan="4" class="text-end">Total</td><td class="text-end">{{ invoice.total|money }}</td></tr>
+          <tr><td colspan="4" class="text-end">Paid</td><td class="text-end">{{ invoice.amount_paid|money }}</td></tr>
+          <tr class="fw-bold {% if invoice.balance > 0 %}text-danger{% else %}text-success{% endif %}"><td colspan="4" class="text-end">Balance due</td><td class="text-end">{{ invoice.balance|money }}</td></tr>
+        </tfoot>
+      </table>
+      {% if invoice.notes %}<p class="small text-muted">{{ invoice.notes }}</p>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-4 no-print">
+    {% if invoice.balance > 0 and invoice.status != 'void' %}
+    <div class="card mb-3"><div class="card-header bg-white"><strong>Record payment</strong></div><div class="card-body">
+      <form method="post">{% csrf_token %}
+        <div class="row">{% for field in form %}{% include 'clinic/_field.html' with col='col-12' %}{% endfor %}</div>
+        <button class="btn btn-success w-100"><i class="bi bi-cash me-1"></i>Record payment</button>
+      </form>
+    </div></div>
+    {% endif %}
+    <div class="card"><div class="card-header bg-white"><strong>Payments</strong></div>
+      <ul class="list-group list-group-flush">
+        {% for p in invoice.payments.all %}
+          <li class="list-group-item small d-flex justify-content-between"><span>{{ p.paid_at|date:"j M Y H:i" }}<br><span class="text-muted">{{ p.get_method_display }} {{ p.reference }}</span></span>
+            <strong>{{ p.amount|money }}</strong></li>
+        {% empty %}<li class="list-group-item text-muted small">No payments yet.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

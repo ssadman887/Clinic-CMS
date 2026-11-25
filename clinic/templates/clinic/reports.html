@@ -1,0 +1,65 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h3 class="mb-3">Reports &amp; analytics</h3>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card card-body"><div class="text-muted small">Outstanding receivables</div><div class="fs-4 fw-semibold text-danger">{{ outstanding|money }}</div></div></div>
+  <div class="col-md-4"><div class="card card-body"><div class="text-muted small">Completed lab tests</div><div class="fs-4 fw-semibold">{{ lab_completed }}</div></div></div>
+  <div class="col-md-4"><div class="card card-body"><div class="text-muted small">Abnormal lab results</div><div class="fs-4 fw-semibold text-warning">{{ lab_abnormal }}</div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-7"><div class="card h-100">
+    <div class="card-header bg-white"><strong>Monthly revenue (payments received)</strong></div>
+    <div class="card-body">
+      <div class="d-flex align-items-end gap-2" style="height:220px">
+        {% for r in revenue %}
+          <div class="flex-fill d-flex flex-column justify-content-end h-100 text-center" title="{{ r.total|money }}">
+            <div class="small text-muted" style="font-size:.7rem">{{ r.total|floatformat:0 }}</div>
+            <div class="bar" style="height:{{ r.pct }}%"></div>
+            <div class="small mt-1" style="font-size:.7rem">{{ r.m|date:"M y" }}</div>
+          </div>
+        {% empty %}<p class="text-muted">No payments recorded.</p>{% endfor %}
+      </div>
+    </div>
+  </div></div>
+
+  <div class="col-xl-5"><div class="card h-100">
+    <div class="card-header bg-white"><strong>Appointments by department</strong></div>
+    <div class="card-body">
+      {% for d in by_dept %}
+        <div class="mb-2"><div class="d-flex justify-content-between small"><span>{{ d.name }}</span><span>{{ d.total }} <span class="text-muted">({{ d.completed }} done)</span></span></div>
+          <div class="bg-light rounded"><div class="hbar" style="width:{{ d.pct }}%"></div></div></div>
+      {% endfor %}
+    </div>
+  </div></div>
+
+  <div class="col-md-6 col-xl-4"><div class="card h-100">
+    <div class="card-header bg-white"><strong>Appointment outcomes</strong></div>
+    <ul class="list-group list-group-flush">
+      {% for s in status_split %}<li class="list-group-item d-flex justify-content-between"><span>{{ s.label }}</span><span>{{ s.c }} <span class="text-muted small">({{ s.pct }}%)</span></span></li>{% endfor %}
+    </ul>
+  </div></div>
+
+  <div class="col-md-6 col-xl-4"><div class="card h-100">
+    <div class="card-header bg-white"><strong>Top diagnoses</strong></div>
+    <ul class="list-group list-group-flush">
+      {% for d in top_diagnoses %}<li class="list-group-item d-flex justify-content-between small"><span>{{ d.diagnosis }} <span class="text-muted">{{ d.icd10_code }}</span></span><strong>{{ d.c }}</strong></li>{% endfor %}
+    </ul>
+  </div></div>
+
+  <div class="col-md-6 col-xl-4"><div class="card h-100">
+    <div class="card-header bg-white"><strong>Most prescribed medicines</strong></div>
+    <ul class="list-group list-group-flush">
+      {% for m in top_medicines %}<li class="list-group-item d-flex justify-content-between small"><span>{{ m.medicine__name }} {{ m.medicine__strength }}</span><span><strong>{{ m.c }}</strong> <span class="text-muted">Rx</span></span></li>{% endfor %}
+    </ul>
+  </div></div>
+
+  <div class="col-md-6 col-xl-12"><div class="card">
+    <div class="card-header bg-white"><strong>Doctor workload (completed visits)</strong></div>
+    <div class="table-responsive"><table class="table mb-0"><tbody>
+      {% for d in top_doctors %}<tr><td><a href="{{ d.get_absolute_url }}">{{ d }}</a></td><td class="small text-muted">{{ d.specialization }}</td><td class="text-end fw-semibold">{{ d.done }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div></div>
+</div>
+{% endblock %}

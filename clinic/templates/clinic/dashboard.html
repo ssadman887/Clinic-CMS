@@ -1,0 +1,116 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Dashboard</h3>
+    <span class="text-muted">{{ today|date:"l, j F Y" }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'patient_create' %}" class="btn btn-outline-primary"><i class="bi bi-person-plus me-1"></i>New patient</a>
+    <a href="{% url 'appointment_create' %}" class="btn btn-primary"><i class="bi bi-calendar-plus me-1"></i>Book appointment</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% with s=stats %}
+  <div class="col-6 col-xl-3"><a href="{% url 'patient_list' %}" class="text-decoration-none text-body">
+    <div class="card stat-card"><div class="card-body d-flex gap-3 align-items-center">
+      <div class="icon bg-primary-subtle text-primary"><i class="bi bi-people"></i></div>
+      <div><div class="text-muted small">Patients</div><div class="fs-4 fw-semibold">{{ s.patients }}</div>
+        <div class="small text-success">+{{ s.new_patients_month }} this month</div></div>
+    </div></div></a></div>
+  <div class="col-6 col-xl-3"><a href="{% url 'appointment_list' %}?date={{ today|date:'Y-m-d' }}" class="text-decoration-none text-body">
+    <div class="card stat-card"><div class="card-body d-flex gap-3 align-items-center">
+      <div class="icon bg-info-subtle text-info"><i class="bi bi-calendar-check"></i></div>
+      <div><div class="text-muted small">Appointments today</div><div class="fs-4 fw-semibold">{{ s.appointments_today }}</div>
+        <div class="small text-muted">{{ s.doctors }} active doctors</div></div>
+    </div></div></a></div>
+  <div class="col-6 col-xl-3"><a href="{% url 'invoice_list' %}" class="text-decoration-none text-body">
+    <div class="card stat-card"><div class="card-body d-flex gap-3 align-items-center">
+      <div class="icon bg-success-subtle text-success"><i class="bi bi-cash-coin"></i></div>
+      <div><div class="text-muted small">Revenue this month</div><div class="fs-5 fw-semibold">{{ s.revenue_month|money }}</div>
+        <div class="small text-muted">Today {{ s.revenue_today|money }}</div></div>
+    </div></div></a></div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card"><div class="card-body d-flex gap-3 align-items-center">
+      <div class="icon bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
+      <div><a href="{% url 'lab_list' %}" class="text-decoration-none text-body"><div class="text-muted small">Pending lab tests</div><div class="fs-4 fw-semibold">{{ s.pending_labs }}</div></a>
+        <div class="small"><a href="{% url 'invoice_list' %}?status=unpaid" class="text-danger">{{ s.unpaid_invoices }} unpaid invoices</a>
+          · <a href="{% url 'medicine_list' %}?low=1" class="text-danger">{{ s.low_stock }} low stock</a></div></div>
+    </div></div></div>
+  {% endwith %}
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between">
+        <strong>Today's appointments</strong>
+        <a href="{% url 'appointment_list' %}?date={{ today|date:'Y-m-d' }}" class="small">View all</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Reason</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for a in todays %}
+            <tr onclick="location.href='{{ a.get_absolute_url }}'" style="cursor:pointer">
+              <td>{{ a.scheduled_at|time:"H:i" }}</td>
+              <td>{{ a.patient.full_name }}<div class="small text-muted">{{ a.patient.mrn }}</div></td>
+              <td>{{ a.doctor }}</td>
+              <td class="small">{{ a.reason|truncatechars:40 }}</td>
+              <td><span class="badge text-bg-{{ a.status_badge }}">{{ a.get_status_display }}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No appointments today.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><strong>Appointments — last 14 days</strong></div>
+      <div class="card-body">
+        <div class="d-flex align-items-end gap-1" style="height:120px">
+          {% for t in trend %}
+            <div class="flex-fill d-flex flex-column justify-content-end h-100" title="{{ t.day|date:'D j M' }}: {{ t.count }}">
+              <div class="bar" style="height:{{ t.pct }}%"></div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="d-flex justify-content-between small text-muted mt-1">
+          <span>{{ trend.0.day|date:"j M" }}</span><span>{{ today|date:"j M" }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between"><strong>Pending lab work</strong>
+        <a href="{% url 'lab_list' %}" class="small">Lab</a></div>
+      <ul class="list-group list-group-flush">
+        {% for l in recent_labs %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ l.test.name }}<div class="small text-muted">{{ l.patient.full_name }}</div></span>
+            <a href="{% url 'lab_result' l.pk %}" class="btn btn-sm btn-outline-primary align-self-center">Result</a>
+          </li>
+        {% empty %}<li class="list-group-item text-muted">Nothing pending.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white"><strong>Upcoming appointments</strong></div>
+      <div class="table-responsive"><table class="table mb-0">
+        <tbody>
+        {% for a in upcoming %}
+          <tr><td>{{ a.scheduled_at|date:"D j M, H:i" }}</td><td><a href="{{ a.patient.get_absolute_url }}">{{ a.patient.full_name }}</a></td>
+            <td>{{ a.doctor }}</td><td class="small text-muted">{{ a.get_visit_type_display }}</td>
+            <td class="text-end"><a href="{{ a.get_absolute_url }}" class="btn btn-sm btn-light">Open</a></td></tr>
+        {% empty %}<tr><td class="text-muted">None scheduled.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

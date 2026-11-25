@@ -1,0 +1,32 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}Billing{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Billing</h3>
+  <a href="{% url 'invoice_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New invoice</a>
+</div>
+<form class="card card-body mb-3 row g-2 flex-row" method="get">
+  <div class="col-md-6"><input name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Invoice no, patient, MRN…"></div>
+  <div class="col-md-4"><select name="status" class="form-select"><option value="">Any status</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if request.GET.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2 d-grid"><button class="btn btn-outline-primary">Filter</button></div>
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover mb-0">
+    <thead class="table-light"><tr><th>Invoice</th><th>Date</th><th>Patient</th><th class="text-end">Subtotal</th><th class="text-end">Discount</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for i in page %}
+      <tr onclick="location.href='{{ i.get_absolute_url }}'" style="cursor:pointer">
+        <td class="font-monospace">{{ i.invoice_no }}</td>
+        <td>{{ i.issued_on|date:"j M Y" }}</td>
+        <td>{{ i.patient.full_name }}<div class="small text-muted">{{ i.patient.mrn }}</div></td>
+        <td class="text-end">{{ i.subtotal_db|money }}</td>
+        <td class="text-end small text-muted">{{ i.discount|money }}</td>
+        <td><span class="badge text-bg-{{ i.status_badge }}">{{ i.get_status_display }}</span></td>
+      </tr>
+    {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No invoices.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% include 'clinic/_pagination.html' %}
+{% endblock %}

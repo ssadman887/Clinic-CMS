@@ -1,0 +1,94 @@
+{% extends 'clinic/base.html' %}{% load clinic_extras %}
+{% block title %}Appointment{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Appointment #{{ appt.pk }} <span class="badge text-bg-{{ appt.status_badge }} fs-6 align-middle">{{ appt.get_status_display }}</span></h3>
+    <span class="text-muted">{{ appt.scheduled_at|date:"l, j F Y · H:i" }} ({{ appt.duration_minutes }} min)</span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'consultation_form' appt.pk %}" class="btn btn-primary"><i class="bi bi-clipboard2-pulse me-1"></i>{% if consultation %}Edit{% else %}Start{% endif %} consultation</a>
+    {% if not invoices %}
+    <form method="post" action="{% url 'invoice_from_appointment' appt.pk %}">{% csrf_token %}
+      <button class="btn btn-outline-primary"><i class="bi bi-receipt me-1"></i>Generate invoice</button></form>
+    {% endif %}
+    <a href="{% url 'appointment_update' appt.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-body small">
+      <h6 class="text-muted text-uppercase small">Patient</h6>
+      <a href="{{ appt.patient.get_absolute_url }}" class="fw-semibold fs-6">{{ appt.patient.full_name }}</a>
+      <div>{{ appt.patient.mrn }} · {{ appt.patient.age }} yrs · {{ appt.patient.get_gender_display }} · {{ appt.patient.blood_group }}</div>
+      <div>{{ appt.patient.phone }}</div>
+      {% if appt.patient.allergies %}<div class="text-danger mt-1"><i class="bi bi-exclamation-triangle"></i> Allergies: {{ appt.patient.allergies }}</div>{% endif %}
+      <hr>
+      <h6 class="text-muted text-uppercase small">Doctor</h6>
+      <a href="{{ appt.doctor.get_absolute_url }}" class="fw-semibold">{{ appt.doctor }}</a>
+      <div>{{ appt.doctor.specialization }} · {{ appt.doctor.department }}</div>
+      <hr>
+      <h6 class="text-muted text-uppercase small">Visit</h6>
+      <div>{{ appt.get_visit_type_display }} — {{ appt.reason }}</div>
+      {% if appt.notes %}<div class="text-muted mt-1">{{ appt.notes }}</div>{% endif %}
+    </div></div>
+    <div class="card mt-3"><div class="card-body">
+      <h6 class="small text-muted text-uppercase">Update status</h6>
+      <form method="post" action="{% url 'appointment_status' appt.pk %}" class="d-flex flex-wrap gap-1">{% csrf_token %}
+        {% for v, l in statuses %}
+          <button name="status" value="{{ v }}" class="btn btn-sm {% if appt.status == v %}btn-dark{% else %}btn-outline-dark{% endif %}">{{ l }}</button>
+        {% endfor %}
+      </form>
+    </div></div>
+    {% if invoices %}
+    <div class="card mt-3"><div class="card-body small">
+      <h6 class="small text-muted text-uppercase">Invoices</h6>
+      {% for i in invoices %}<div><a href="{{ i.get_absolute_url }}">{{ i.invoice_no }}</a> — {{ i.total|money }}
+        <span class="badge text-bg-{{ i.status_badge }}">{{ i.get_status_display }}</span></div>{% endfor %}
+    </div></div>
+    {% endif %}
+  </div>
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body">
+    {% if consultation %}
+      <div class="d-flex justify-content-between">
+        <h5>Consultation</h5>
+        <a href="{% url 'prescription_print' consultation.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Print prescription</a>
+      </div>
+      <div class="row small g-2 mb-3">
+        <div class="col-4 col-md-2"><div class="text-muted">BP</div>{{ consultation.blood_pressure|default:"—" }}</div>
+        <div class="col-4 col-md-2"><div class="text-muted">Pulse</div>{{ consultation.pulse|default:"—" }}</div>
+        <div class="col-4 col-md-2"><div class="text-muted">Temp °F</div>{{ consultation.temperature|default:"—" }}</div>
+        <div class="col-4 col-md-2"><div class="text-muted">SpO₂</div>{{ consultation.spo2|default:"—" }}</div>
+        <div class="col-4 col-md-2"><div class="text-muted">Weight</div>{{ consultation.weight_kg|default:"—" }}</div>
+        <div class="col-4 col-md-2"><div class="text-muted">BMI</div>{{ consultation.bmi|default:"—" }}</div>
+      </div>
+      <p class="mb-1"><strong>Chief complaint:</strong> {{ consultation.chief_complaint }}</p>
+      {% if consultation.symptoms %}<p class="mb-1"><strong>Symptoms:</strong> {{ consultation.symptoms }}</p>{% endif %}
+      <p class="mb-1"><strong>Diagnosis:</strong> {{ consultation.diagnosis }} {% if consultation.icd10_code %}<span class="badge text-bg-light">{{ consultation.icd10_code }}</span>{% endif %}</p>
+      {% if consultation.notes %}<p class="mb-1"><strong>Notes:</strong> {{ consultation.notes }}</p>{% endif %}
+      {% if consultation.follow_up_date %}<p class="mb-1"><strong>Follow-up:</strong> {{ consultation.follow_up_date|date:"j M Y" }}</p>{% endif %}
+      {% if consultation.prescription %}
+        <h6 class="mt-3">Prescription</h6>
+        <table class="table table-sm small"><thead><tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Days</th><th>Qty</th><th>Notes</th></tr></thead><tbody>
+          {% for i in consultation.prescription.items.all %}
+            <tr><td>{{ i.medicine }}</td><td>{{ i.dosage }}</td><td>{{ i.frequency }}</td><td>{{ i.duration_days }}</td><td>{{ i.quantity }}</td><td>{{ i.instructions }}</td></tr>
+          {% empty %}<tr><td colspan="6" class="text-muted">No medicines.</td></tr>{% endfor %}
+        </tbody></table>
+        {% if consultation.prescription.instructions %}<p class="small"><em>{{ consultation.prescription.instructions }}</em></p>{% endif %}
+      {% endif %}
+      {% with labs=consultation.lab_orders.all %}{% if labs %}
+        <h6 class="mt-3">Lab orders</h6>
+        <ul class="small">{% for l in labs %}<li>{{ l.test.name }} — <span class="badge text-bg-{{ l.status_badge }}">{{ l.get_status_display }}</span> {{ l.result_value }} {% if l.result_value %}{{ l.test.unit }}{% endif %}</li>{% endfor %}</ul>
+      {% endif %}{% endwith %}
+    {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-clipboard2-pulse fs-1"></i>
+        <p class="mt-2">No consultation recorded yet.</p>
+        <a href="{% url 'consultation_form' appt.pk %}" class="btn btn-primary">Start consultation</a>
+      </div>
+    {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
