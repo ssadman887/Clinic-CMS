@@ -66,6 +66,18 @@ Options: `--patients N`, `--appointments N`, `--days-back N`, `--seed N`.
 Default volume: 9 departments, 20 doctors, 500 patients, ~3,000 appointments over the last year
 plus two weeks ahead, with consultations, prescriptions, lab orders/results, invoices and payments.
 
+## Deploying to Railway
+
+`railway.json` tells Railway to run `start.sh`, which migrates, collects static files (served by
+WhiteNoise), seeds demo data on first boot, and starts gunicorn on `$PORT`.
+
+1. In the Railway project, add a **PostgreSQL** database and set the web service variable
+   `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Without it the app falls back to SQLite, whose data is
+   wiped on every redeploy.
+2. Set `DJANGO_SECRET_KEY` (a long random string) and `DJANGO_DEBUG=False`.
+3. Generate a domain under Settings → Networking. The `*.up.railway.app` domain is trusted automatically;
+   for a custom domain also set `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`.
+
 ## Fresh setup on another machine
 
 ```powershell
